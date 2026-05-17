@@ -4,6 +4,7 @@ from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, Com
 
 HINDI_FONT_FILE = "Hindi.ttf"
 
+# एनवायरनमेंट वेरिएबल्स (GitHub Actions से डेटा लेना)
 full_text = os.environ.get('FULL_TEXT', 'Ek baar ki baat hai.')
 chat_id = os.environ.get('CHAT_ID')
 webhook_url = os.environ.get('WEBHOOK_URL')
@@ -13,7 +14,8 @@ resume_url = os.environ.get('RESUME_URL') # n8n Wait Node Resume URL
 
 print(f"Total Scenes to render: {len(scenes_data)}")
 
-# 1. FREE AI Voiceover
+# 1. FREE AI Voiceover (edge-tts)
+# यहाँ कॉमा (,) की वजह से AI खुद नैचुरल पॉज लेगा, हमें अलग से silence ऐड करने की जरूरत नहीं है
 subprocess.run(['edge-tts', '--voice', 'hi-IN-MadhurNeural', '--text', full_text, '--write-media', 'voiceover.mp3'])
 
 voiceover = AudioFileClip("voiceover.mp3")
@@ -30,15 +32,18 @@ try:
 except:
     whoosh_sfx = pop_sfx = None
 
-viral_colors = ['#00FF41', '#00FFFF', '#FFFFFF', '#FF007F']  # Matrix Green, Cyan, White, Neon Pink
+# 🌟 Premium Engineering Channel Colors (Gold, Tech Blue, White, Green)
+viral_colors = ['#FFC000', '#00B0F0', '#FFFFFF', '#92D050'] 
 
 # 🌟 SHORTS FORMAT (Vertical 1080x1920)
 TARGET_W, TARGET_H = 1080, 1920
 
 # 2. Process Each Scene
 for i, scene in enumerate(scenes_data):
-    keyword = scene.get('keyword', 'nature')
+    keyword = scene.get('keyword', 'technology')
     text_line = scene.get('text', '')
+    
+    # सीन का असली ड्यूरेशन (बिना किसी एक्स्ट्रा टाइम के ताकि ऑडियो के साथ सिंक रहे)
     scene_duration = voiceover.duration * (len(text_line) / max(total_chars, 1))
     if scene_duration < 1.0: scene_duration = 1.0
     
@@ -57,8 +62,9 @@ for i, scene in enumerate(scenes_data):
             clip = clip.resize(width=TARGET_W)
         clip = clip.crop(x_center=clip.w/2, y_center=clip.h/2, width=TARGET_W, height=TARGET_H)
         
-        zoomed_clip = clip.resize(lambda t: 1.0 + 0.04 * (t / scene_duration)).set_position(('center', 'center'))
-        dark_overlay = ColorClip(size=(TARGET_W, TARGET_H), color=(0,0,0)).set_opacity(0.35).set_position(('center', 'center')).set_duration(scene_duration)
+        # Slower, cinematic zoom for documentaries (0.02)
+        zoomed_clip = clip.resize(lambda t: 1.0 + 0.02 * (t / scene_duration)).set_position(('center', 'center'))
+        dark_overlay = ColorClip(size=(TARGET_W, TARGET_H), color=(0,0,0)).set_opacity(0.40).set_position(('center', 'center')).set_duration(scene_duration)
         
         words = text_line.split(' ')
         chunk_size = 2 # 2 words per screen for fast-paced Shorts
@@ -70,11 +76,11 @@ for i, scene in enumerate(scenes_data):
         for w_i, chunk in enumerate(chunks):
             current_color = viral_colors[w_i % len(viral_colors)]
             
-            # Adjusted text size for Vertical video
-            bg_txt = TextClip(chunk, fontsize=120, color='black', font=HINDI_FONT_FILE, stroke_color='black', stroke_width=18, method='caption', size=(950, None))
+            # Premium Text Design
+            bg_txt = TextClip(chunk, fontsize=100, color='black', font=HINDI_FONT_FILE, stroke_color='black', stroke_width=15, method='caption', size=(950, None))
             bg_txt = bg_txt.set_position(('center', 'center')).set_duration(duration_per_chunk).set_start(w_i * duration_per_chunk)
             
-            main_txt = TextClip(chunk, fontsize=120, color=current_color, font=HINDI_FONT_FILE, stroke_color='black', stroke_width=3, method='caption', size=(950, None))
+            main_txt = TextClip(chunk, fontsize=100, color=current_color, font=HINDI_FONT_FILE, stroke_color='black', stroke_width=2, method='caption', size=(950, None))
             main_txt = main_txt.set_position(('center', 'center')).set_duration(duration_per_chunk).set_start(w_i * duration_per_chunk)
             
             word_clips.extend([bg_txt, main_txt])
@@ -84,7 +90,7 @@ for i, scene in enumerate(scenes_data):
             
         video_clips.append(final_scene)
         
-        # Audio Mix Timing
+        # Audio Mix Timing (Sound effects sync)
         if whoosh_sfx: audio_clips.append(whoosh_sfx.set_start(current_time))
         if pop_sfx: audio_clips.append(pop_sfx.set_start(current_time + 0.1))
                 
@@ -93,20 +99,20 @@ for i, scene in enumerate(scenes_data):
     except Exception as e:
         print(f"Error on scene {i}: {e}")
 
-# Stitch Everything without padding
+# 3. Stitch Everything without padding
 final_video = concatenate_videoclips(video_clips, method="compose")
 
-# Progress Bar
+# Progress Bar (Premium Tech Blue: #00B0F0)
 final_duration = final_video.duration
-progress_bar = ColorClip(size=(TARGET_W, 15), color=(255, 0, 0))
+progress_bar = ColorClip(size=(TARGET_W, 15), color=(0, 176, 240))
 progress_bar = progress_bar.set_position(lambda t: (-TARGET_W + int(TARGET_W * (t / max(final_duration, 1))), 'bottom'))
 progress_bar = progress_bar.set_duration(final_duration)
 
 final_video = CompositeVideoClip([final_video, progress_bar])
 
-# Background Music Mix
+# Background Music Mix (Volume kam rakha hai taaki Voiceover clear rahe)
 try:
-    bgm = AudioFileClip("bgm.mp3").volumex(0.10)
+    bgm = AudioFileClip("bgm.mp3").volumex(0.08)
     if bgm.duration < final_video.duration: bgm = afx.audio_loop(bgm, duration=final_video.duration)
     else: bgm = bgm.subclip(0, final_video.duration)
     audio_clips.append(bgm)
@@ -117,7 +123,7 @@ final_video = final_video.set_audio(final_audio)
 
 # 🌟 MAGICAL FIX: FAST RENDER & COMPRESSED SIZE
 print("Rendering Final COMPRESSED SHORTS Video...")
-final_video.write_videofile("final_video.mp4", fps=24, codec="libx264", audio_codec="aac", threads=2, bitrate="1500k", preset="ultrafast")
+final_video.write_videofile("final_video.mp4", fps=24, codec="libx264", audio_codec="aac", threads=2, bitrate="1500k", preset="veryfast")
 
 print("Starting 5-Layer Indestructible Upload System...")
 video_link = "Upload Failed"
@@ -167,7 +173,7 @@ print(f"🔥 FINAL YOUTUBE LINK: {video_link} 🔥")
 
 payload = {
     "chat_id": chat_id, 
-    "message": "👑 Bhai! Shorts Video Ready! 🔥", 
+    "message": "👑 Bhai! Engineering Shorts Ready! 🔥", 
     "youtube_url": video_link
 }
 
